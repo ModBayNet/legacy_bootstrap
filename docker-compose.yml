@@ -1,0 +1,52 @@
+version: '3.7'
+
+services:
+  redis:
+    image: redis:alpine
+    command: --requirepass ${MODBAY_REDIS_PASSWORD}
+    restart: unless-stopped
+
+    volumes:
+      - modbay-redis:/data
+
+  edgedb:
+    image: edgedb/edgedb:nightly
+    restart: unless-stopped
+
+    volumes:
+      - modbay-edgedb:/var/lib/edgedb/data
+
+  manager:
+    image: registry.gitlab.com/modbay1/manager:latest
+    restart: unless-stopped
+    command: -v debug
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./config.yaml:/code/config.yaml
+
+    depends_on:
+      - edgedb
+
+  worker:
+    image: registry.gitlab.com/modbay1/worker:latest
+    restart: unless-stopped
+    command: -v debug
+
+    volumes:
+      - ./config.yaml:/code/config.yaml
+
+    ports:
+      - 8080:8080
+
+    depends_on:
+      - redis
+      - edgedb
+      - manager
+
+volumes:
+  modbay-redis:
+    external: true
+
+  modbay-edgedb:
+    external: true
