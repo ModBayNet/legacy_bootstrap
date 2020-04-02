@@ -3,7 +3,6 @@ version: '3.7'
 services:
   redis:
     image: redis:alpine
-    command: --requirepass ${MODBAY_REDIS_PASSWORD}
     restart: unless-stopped
 
     volumes:

@@ -21,18 +21,35 @@ docker volume create --name=modbay-edgedb
 cleanup () {
 	printf "\n"
 	printf "Cleaning up...\n"
+	docker-compose stop redis
 	docker-compose stop edgedb
 	exit 0
 }
 
+#FIXME: ask password inside docker exec block. currently it is not possible because of the absense of -i flag
+# or some other weird TTY issue
+getpass()
+{
+	read -sp "Please, enter password for $1: " password
+	printf "$password"
+}
+
 trap cleanup 1 2 3 6 EXIT
+
+printf "Setting up redis...\n"
+docker-compose up -d redis
+
+REDIS_PASSWORD=$(getpass "Redis database")
+printf "\n"
+
+docker-compose exec redis redis-cli config set requirepass "$REDIS_PASSWORD" >/dev/null
+docker-compose stop redis
 
 printf "Setting up EdgeDB...\n"
 docker-compose up -d edgedb
 
-#FIXME: ask password inside docker exec block. currently it is not possible because of the absense of -i flag
-# or some other weird TTY issue
-read -sp "Please, enter password for EdgeDB database: "
+EDGEDB_PASSWORD=$(getpass "EdgeDB database")
+printf "\n"
 
 printf "Waiting for EdgeDB to come online...\n"
 printf "If you are seing this for a long time, check EdgDB logs with:\n"
@@ -41,6 +58,9 @@ printf "\tdocker-compose logs -f edgedb\n\n"
 printf "waiting"
 
 #FIXME: a better way to wait for EdgeDB
+#
+#this was implemented in edgedb, waiting for new CLI to be merged
+#https://github.com/edgedb/edgedb-cli/issues/4
 while [ true ]
 do
 	printf "."
